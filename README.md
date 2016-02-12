@@ -1,4 +1,4 @@
-onos-byon
+onos-unibo
 =========
 
-ONOS Tutorial application for creating virtual networks
+bundle to create steering between different networks using Onos intents
