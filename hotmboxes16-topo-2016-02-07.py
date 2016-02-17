@@ -334,6 +334,26 @@ def defineNetwork():
     else:
       print "Host " + host.name + ": routing table currently not configured"
 
+
+  #Building GRE tunnels
+  for switch in net.switches:
+    if switch.name == 's4':
+      switch.cmd('ifconfig ' + switch.name + '192.168.1.45/24')
+      switch.cmd('ovs-vsctl add-port ' + switch.name + ' grec1c2 -- set Interface grec1c2 type=gre options:key=1 options:remote_ip=192.168.2.54 options:local_ip=192.168.1.45')
+      switch.cmd('ovs-vsctl add-port ' + switch.name + ' grec1c3 -- set Interface grec1c3 type=gre options:key=2 options:remote_ip=192.168.3.74 options:local_ip=192.168.1.45')
+    elif switch.name == 's5':
+      switch.cmd('ifconfig ' + switch.name + '192.168.2.54/24')
+      switch.cmd('ovs-vsctl add-port ' + switch.name + ' grec2c1 -- set Interface grec2c1 type=gre options:key=1 options:remote_ip=192.168.1.45 options:local_ip=192.168.2.54')
+    elif switch.name == 's7':
+      switch.cmd('ifconfig ' + switch.name + '192.168.2.79/24')
+      switch.cmd('ovs-vsctl add-port ' + switch.name + ' grec2c3 -- set Interface grec2c3 type=gre options:key=3 options:remote_ip=192.168.3.74 options:local_ip=192.168.2.79')
+    elif switch.name == 's9':
+      switch.cmd('ifconfig ' + switch.name + '192.168.3.74/24')
+      switch.cmd('ovs-vsctl add-port ' + switch.name + ' grec3c1 -- set Interface grec3c1 type=gre options:key=2 options:remote_ip=192.168.1.45 options:local_ip=192.168.3.74')
+      switch.cmd('ovs-vsctl add-port ' + switch.name + ' grec3c2 -- set Interface grec3c2 type=gre options:key=3 options:remote_ip=192.168.2.79 options:local_ip=192.168.3.74')
+    else:
+      print 'Switch ' + switch.name + ' does not need GRE tunnels'
+
   info('... running CLI \n***')
   CLI(net)
   info('\n')

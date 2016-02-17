@@ -26,6 +26,7 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Service;
 import org.onosproject.net.*;
+import org.onosproject.net.device.DeviceService;
 import org.onosproject.net.host.HostService;
 import org.onosproject.net.link.LinkService;
 import org.onosproject.net.topology.Topology;
@@ -80,6 +81,9 @@ public class DistributedNetworkStore
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected LinkService linkService;
 
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    protected DeviceService deviceService;
+
     /*
      * TODO Lab 5: Replace the ConcurrentMap with ConsistentMap
      */
@@ -96,6 +100,10 @@ public class DistributedNetworkStore
     private Map<Integer,List<HashMap<DeviceId, NFModel>>> NF = new HashMap<Integer, List<HashMap<DeviceId, NFModel>>>();
 
     private List<NFModel> NFunctions = new ArrayList<>();
+
+    private List<GREModel> greTunnels = new ArrayList<>();
+
+//    private ConnectPoint[][][] matrixTunnels = new ConnectPoint[10][10][2];
 
     /*
      * TODO Lab 6: Create a listener instance of InternalListener
@@ -130,6 +138,7 @@ public class DistributedNetworkStore
         networks = nets.asJavaMap();
         log.info("Started");
         fillNFsMap();
+        fillGreeList();
     }
 
     @Deactivate
@@ -378,6 +387,112 @@ public class DistributedNetworkStore
     }
 
 
+
+    @Override
+    public List<Port> getTunnel( DeviceId deviceId) {
+        List<Port> tunnels = new ArrayList<>();
+        Iterator<Port> ports;
+
+        ports = deviceService.getPorts(deviceId).iterator();
+
+        while (ports.hasNext()) { // To loop all the PORTS in the present device
+            Port k = ports.next(); // k is the PORT in the present iteration
+            Set<String> keys = k.annotations().keys();
+
+            if (k.annotations().value(keys.iterator().next()).contains("gre")) {
+//                System.out.println(k.annotations().value(keys.iterator().next()));
+                tunnels.add(k);
+            }
+        }
+        return tunnels;
+    }
+
+
+    private void fillGreeList() {
+        Topology myTopo = topologyService.currentTopology();
+        Iterator<TopologyCluster> clusters;
+        Iterator<DeviceId> devices;
+        Iterator<Port> ports;
+
+        int cardinal = 1;
+        boolean repited = false;
+        clusters =  topologyService.getClusters(myTopo).iterator();
+
+        while (clusters.hasNext()) { // To loop all the CLUSTERS
+            TopologyCluster ii = clusters.next(); // i is the CLUSTER in the present iteration
+            devices = topologyService.getClusterDevices(myTopo, ii).iterator();
+
+            while (devices.hasNext()) { // To loop all the DEVICES in the present cluster
+                DeviceId jj = devices.next(); // j is the DEVICE in the present iteration
+                ports = deviceService.getPorts(jj).iterator();
+                while (ports.hasNext()) { // To loop all the PORTS in the present device
+                    Port k = ports.next(); // k is the PORT in the present iteration
+                    Set<String> keys = k.annotations().keys();
+                    if (k.annotations().value(keys.iterator().next()).contains("gre")) {
+                        GREModel greModel = new GREModel();
+                        String greId = k.annotations().value(keys.iterator().next());
+                        greModel.setId(greId);
+                        greModel.setEdgeSrc(getClusterSrcByGreeId(greId));
+                        greModel.setEdgeDst(getClusterDstByGreeId(greId));
+                        greModel.setConnectPoint(ConnectPoint.deviceConnectPoint(jj.toString() + "/" + k.number().toString()));
+                        greModel.setPort(k);
+                        greTunnels.add(greModel);
+                    }
+                }
+            }
+        }
+    }
+
+    private int getClusterSrcByGreeId(String greId) {
+        int clusterSrc = -1;
+        char[] cad = greId.toCharArray();
+        for(int i=0; i<cad.length; i++) {
+            if(cad[i] == 'c') {
+                try {
+                    char iep = cad[i+1];
+                    clusterSrc = cad[i+1] - 48;   //From char to int (48 is the ascii value of 0)
+                    return clusterSrc;
+                } catch (Exception e) {
+                }
+            }
+        }
+        return clusterSrc;
+    }
+
+    private int getClusterDstByGreeId(String greId) {
+        int clusterSrc = -1;
+        int count = 0;
+        char[] cad = greId.toCharArray();
+        for(int i=0; i<cad.length; i++) {
+            if(cad[i] == 'c') {
+                try {
+                    char iep = cad[i+1];
+                    clusterSrc = cad[i+1] - 48;   //From char to int (48 is the ascii value of 0)
+                    count++;
+                    if(count==2) {
+                        return clusterSrc;
+                    }
+                } catch (Exception e) {
+                }
+            }
+        }
+        return clusterSrc = -1;
+    }
+
+    public List<GREModel> getGreByDeviceId(DeviceId deviceId) {
+        List<GREModel> GREinDeviceId = new ArrayList<>();
+        Iterator<GREModel> tunnels = greTunnels.iterator();
+        while (tunnels.hasNext()) {
+            GREModel actualTunnel = tunnels.next();
+            if (actualTunnel.getConnectPoint().deviceId().equals(deviceId)) {
+                GREinDeviceId.add(actualTunnel);
+            }
+        }
+        return GREinDeviceId;
+    }
+
+
+
     public Map<Integer, List<HashMap<DeviceId, NFModel>>> getNFs (){
         return NF;
     }
@@ -429,4 +544,38 @@ public class DistributedNetworkStore
         }
         return connectPointNF;
     }
+
+
+    @Override
+    public int getEdgeByConnectPoint (ConnectPoint connectPoint) {
+        ConnectPoint gw;
+
+        if (getGwByConnectPoint(connectPoint, false) != null) {
+            gw =getGwByConnectPoint(connectPoint, false);
+        } else {
+            gw =getGwByConnectPoint(connectPoint, true);
+        }
+
+        Host gwHost = hostService.getHost(gw.hostId());
+        String ip = gwHost.ipAddresses().toString();
+        String[] temp = ip.split("\\.", 4);
+        int edge = Integer.parseInt(temp[2]);
+
+        return edge;
+    }
+
+
+    @Override
+    public ConnectPoint getTunnelByEdgesSrcDst (int Src, int Dst) {
+
+        for (int i=0; i<greTunnels.size(); i++) {
+            if (greTunnels.get(i).getEdgeSrc() == Src && greTunnels.get(i).getEdgeDst() == Dst) {
+                return greTunnels.get(i).getConnectPoint();
+            }
+        }
+
+        return null;
+    }
+
+
 }

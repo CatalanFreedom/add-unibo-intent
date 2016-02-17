@@ -89,7 +89,9 @@ public class AddFirstUNIBOIntentCommand extends ConnectivityIntentCommand {
             objectsToCross.add(pathObject5);
         }
 
-        if (dpii == null) {
+        networkService.addThirdUNIBOIntent(objectsToCross, dpi);
+
+/*        if (dpii == null) {
             networkService.addSecondUNIBOIntent(objectsToCross, dpi, true);
         } else {
             networkService.addSecondUNIBOIntent(objectsToCross, dpii, true);
@@ -114,7 +116,7 @@ public class AddFirstUNIBOIntentCommand extends ConnectivityIntentCommand {
                 networkService.addSecondUNIBOIntent(objectsToCrossBack, null, false);
             }
         }
-
+*/
         print("Added the UNIBO chaining intent");
 //        print("Added intent from %s to %s, with a waypoint in %s. In the network %s", ingressDeviceString, egressDeviceString, RequestPath, ReplyPath);
     }

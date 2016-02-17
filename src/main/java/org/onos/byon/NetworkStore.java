@@ -16,10 +16,7 @@
 
 package org.onos.byon;
 
-import org.onosproject.net.ConnectPoint;
-import org.onosproject.net.DeviceId;
-import org.onosproject.net.HostId;
-import org.onosproject.net.PortNumber;
+import org.onosproject.net.*;
 import org.onosproject.store.Store;
 
 import java.util.HashMap;
@@ -151,4 +148,13 @@ public interface NetworkStore extends Store<NetworkEvent, NetworkStoreDelegate> 
      * @return the egress connect point of the Network Function
      */
     ConnectPoint getEgressByNFIngress (ConnectPoint ingress);
+
+
+    public List<Port> getTunnel(DeviceId deviceId);
+
+    public int getEdgeByConnectPoint (ConnectPoint connectPoint);
+
+    public ConnectPoint getTunnelByEdgesSrcDst (int Src, int Dst);
+
+
 }

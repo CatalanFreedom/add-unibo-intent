@@ -422,7 +422,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
     }
 
-
+    @Override
     public void addFirstUNIBOIntent(List<String> objectsToCross, String dpi){
 
 //        Classification of all the wayPoints of the path of our Chain between hostConnectPoints and deviceConnectPoints
@@ -553,14 +553,13 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
         }
     }
 
-
+    @Override
     public void addSecondUNIBOIntent(List<String> objectsToCross, String dpi, boolean go) {
 
 //        Classification of all the wayPoints of the path of our Chain between hostConnectPoints and deviceConnectPoints
         List<ConnectPoint> connectsToCross = new ArrayList<>();
         for (String p : objectsToCross) {
             if (p.contains("NF")) {
-//                connectsToCross.add(ConnectPoint.deviceConnectPoint("of:0000000000000001/4"));
                 connectsToCross.add(store.getIngressByNFsName(p));
             } else {
                 connectsToCross.add(ConnectPoint.hostConnectPoint(p + "/0"));
@@ -683,6 +682,136 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
     }
 
 
+    @Override
+    public void addThirdUNIBOIntent(List<String> objectsToCross, String dpi){
+
+//        Classification of all the wayPoints of the path of our Chain between hostConnectPoints and deviceConnectPoints
+        List<ConnectPoint> connectsToCross = new ArrayList<>();
+        for (String p : objectsToCross) {
+            if (p.contains("NF")) {
+//                connectsToCross.add(ConnectPoint.deviceConnectPoint("of:0000000000000001/4"));
+                connectsToCross.add(store.getIngressByNFsName(p));
+            } else {
+                connectsToCross.add(ConnectPoint.hostConnectPoint(p + "/0"));
+            }
+        }
+
+
+//        Checking if we have a DPI to duplicate the packets and send it.
+        ConnectPoint dpiConnectPoint = null;
+        if (dpi != null) {
+            dpiConnectPoint = ConnectPoint.hostConnectPoint(dpi + "/0");
+        }
+
+        boolean changingEdge = false;
+        ConnectPoint nextConnectToCross = null;
+
+//        We install an intent for each jump in our chain.
+//        Depending in the kind of jump, we will install one kind of intent or another one.
+        for ( int i=0; i<objectsToCross.size()-1; i++ ) {
+
+//              Is the present jump between 2 points in the same edge?...
+            if (areInTheSameEDGE(connectsToCross.get(i), connectsToCross.get(i+1))) {
+
+
+//                DPI in the present edge
+                if (areInTheSameEDGE(connectsToCross.get(i), dpiConnectPoint)) {
+
+                        Set<ConnectPoint> egressPoints = new HashSet<>(2);
+                        egressPoints.add(connectsToCross.get(i+1));
+                        egressPoints.add(hostToDevLocation(dpiConnectPoint));
+                        Intent intent = SinglePointToMultiPointIntent.builder()
+                                .appId(appId)
+                                .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
+                                .egressPoints(egressPoints)
+                                .build();
+                        intentService.submit(intent);
+                        dpiConnectPoint = null;
+
+
+                } else {        // No DPI or NOT in the present edge
+
+                    if (connectsToCross.get(i).elementId() instanceof HostId &&
+                            connectsToCross.get(i+1).elementId() instanceof DeviceId) {
+
+                        Intent intent = PointToPointIntent.builder()
+                                .appId(appId)
+//                .key(generateKey(network, hostIdSrc, hostIdDst))
+                                .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
+                                .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
+//                .constraints(constraints)
+//                .treatment(treatment)
+                                .build();
+                        intentService.submit(intent);
+                    }
+
+
+//                    From [NF to NF] or [NF to Tunnel]
+                    if (connectsToCross.get(i).elementId() instanceof DeviceId &&
+                            store.getEgressByNFIngress(connectsToCross.get(i)) != null &&
+                            connectsToCross.get(i+1).elementId() instanceof DeviceId ) {
+
+                        Intent intent = PointToPointIntent.builder()
+                                .appId(appId)
+//                .key(generateKey(network, hostIdSrc, hostIdDst))
+                                .ingressPoint(store.getEgressByNFIngress(connectsToCross.get(i)))
+                                .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
+//                .constraints(constraints)
+//                .treatment(treatment)
+                                .build();
+                        intentService.submit(intent);
+                    }
+
+ //                    From [Tunnel to NF] or [Tunnel to Tunnel]
+                    if (connectsToCross.get(i).elementId() instanceof DeviceId &&
+                            store.getEgressByNFIngress(connectsToCross.get(i)) == null &&
+                            connectsToCross.get(i+1).elementId() instanceof DeviceId ) {
+
+                        Intent intent = PointToPointIntent.builder()
+                                .appId(appId)
+//                .key(generateKey(network, hostIdSrc, hostIdDst))
+                                .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
+                                .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
+//                .constraints(constraints)
+//                .treatment(treatment)
+                                .build();
+                        intentService.submit(intent);
+                    }
+
+                }
+
+
+            } else {
+                ConnectPoint actualConnect = connectsToCross.get(i);
+                nextConnectToCross = connectsToCross.get(i+1);
+                connectsToCross.remove(i+1);
+
+                int edgeSrc = store.getEdgeByConnectPoint(actualConnect);
+                int edgeDst = store.getEdgeByConnectPoint(nextConnectToCross);
+                connectsToCross.add(i+1, store.getTunnelByEdgesSrcDst(edgeSrc, edgeDst));
+                changingEdge = true;
+                i--;
+                continue;
+            }
+
+            if (changingEdge) {
+                int edgeSrc = store.getEdgeByConnectPoint(nextConnectToCross);
+                int edgeDst = store.getEdgeByConnectPoint(connectsToCross.get(i));
+                connectsToCross.remove(i);
+                connectsToCross.add(i, store.getTunnelByEdgesSrcDst(edgeSrc, edgeDst));
+                connectsToCross.remove(i+1);
+                connectsToCross.add(i+1, nextConnectToCross);
+                changingEdge = false;
+                i--;
+
+            }
+
+
+        }
+    }
+
+
+
 
 
 
@@ -754,8 +883,8 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
         Iterator<TopologyCluster> clusters;
         Iterator<DeviceId> devices;
         Iterator<DeviceId> devices2;
-        Iterator<Link> links;
         List<NFModel> nfs;
+        List<Port> tunnels;
         clusters =  topologyService.getClusters(myTopo).iterator();
 
         System.out.println(" ");
@@ -783,6 +912,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                 while (hostIterator.hasNext()) {
                     Host l = hostIterator.next();
                     if (l.location().deviceId().equals(j)) {
+//                        System.out.println(store.getEdgeByConnectPoint (ConnectPoint.hostConnectPoint(l.id().toString() + "/1")));
                         if (store.isTheIngressGw(l.id())) {
                             System.out.println("Host " + l.mac() + " --- ip: " + l.ipAddresses() + "   --It is the Ingress gw--");
                         } else if (store.isTheEgressGw(l.id())) {
@@ -798,6 +928,14 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                 for (int g=0; g<nfs.size();g++) {
                     System.out.println("(" + nfs.get(g).getName() + ") - Between the Ports: " + nfs.get(g).getIngress() + " - " + nfs.get(g).getEgress());
                 }
+
+                tunnels = store.getTunnel(jj);
+                for (int n=0; n<tunnels.size(); n++) {
+                    Set<String> keys = tunnels.get(n).annotations().keys();
+                    System.out.println("(" + tunnels.get(n).annotations().value(keys.iterator().next())
+                            + ") Gre tunnel in port " + tunnels.get(n).number());
+                }
+
                 System.out.println("...........................................");
             }
             System.out.println(" ");
