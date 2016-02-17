@@ -500,7 +500,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 //                .key(generateKey(network, hostIdSrc, hostIdDst))
                                 .ingressPoint(store.getEgressByNFIngress(connectsToCross.get(i)))
                                 .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
-//                .constraints(constraints)
 //                .treatment(treatment)
                                 .build();
                         intentService.submit(intent);
@@ -514,7 +513,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 //                .key(generateKey(network, hostIdSrc, hostIdDst))
                                 .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
                                 .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
-//                .constraints(constraints)
 //                .treatment(treatment)
                                 .build();
                         intentService.submit(intent);
@@ -623,7 +621,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                                 .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
                                 .egressPoint(hostToDevLocation(connectsToCross.get(i + 1)))
                                 .selector(selector)
-//                .constraints(constraints)
 //                .treatment(treatment)
                                 .build();
                         intentService.submit(intent);
@@ -638,7 +635,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                                 .ingressPoint(store.getEgressByNFIngress(connectsToCross.get(i)))
                                 .egressPoint(connectsToCross.get(i + 1))
                                 .selector(selector)
-//                .constraints(constraints)
 //                .treatment(treatment)
                                 .build();
                         intentService.submit(intent);
@@ -655,7 +651,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                             .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
                             .egressPoint(hostToDevLocation(dpiConnectPoint))
                             .selector(selector)
-//                .constraints(constraints)
 //                .treatment(treatment)
                             .build();
                     intentService.submit(intent);
@@ -674,7 +669,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                     .ingressPoint(hostToDevLocation(store.getGwByConnectPoint(dpiConnectPoint, go)))
                     .egressPoint(hostToDevLocation(dpiConnectPoint))
                     .selector(selector)
-//                .constraints(constraints)
 //                .treatment(treatment)
                     .build();
             intentService.submit(intent);
@@ -683,25 +677,42 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
 
     @Override
-    public void addThirdUNIBOIntent(List<String> objectsToCross, String dpi){
+    public void addThirdUNIBOIntent(List<String> objectsToCross, String dpi, boolean go){
 
 //        Classification of all the wayPoints of the path of our Chain between hostConnectPoints and deviceConnectPoints
         List<ConnectPoint> connectsToCross = new ArrayList<>();
         for (String p : objectsToCross) {
             if (p.contains("NF")) {
-//                connectsToCross.add(ConnectPoint.deviceConnectPoint("of:0000000000000001/4"));
                 connectsToCross.add(store.getIngressByNFsName(p));
             } else {
                 connectsToCross.add(ConnectPoint.hostConnectPoint(p + "/0"));
             }
         }
 
-
 //        Checking if we have a DPI to duplicate the packets and send it.
         ConnectPoint dpiConnectPoint = null;
         if (dpi != null) {
             dpiConnectPoint = ConnectPoint.hostConnectPoint(dpi + "/0");
         }
+
+
+        HostId srcHostId = connectsToCross.get(0).hostId();
+        Host srcHost = hostService.getHost(srcHostId);
+        Set<IpAddress> ipAdressesSrc = srcHost.ipAddresses();
+
+        HostId dstHostId = connectsToCross.get(connectsToCross.size()-1).hostId();
+        Host dstHost = hostService.getHost(dstHostId);
+        Set<IpAddress> ipAdressesDst = dstHost.ipAddresses();
+
+        IpPrefix ipSrc = IpPrefix.valueOf(ipAdressesSrc.iterator().next(), 32);
+        IpPrefix ipDst = IpPrefix.valueOf(ipAdressesDst.iterator().next(), 32);
+
+        TrafficSelector selector = DefaultTrafficSelector.builder()
+                .matchEthType(Ethernet.TYPE_IPV4)
+                .matchIPSrc(ipSrc)
+                .matchIPDst(ipDst)
+                .build();
+
 
         boolean changingEdge = false;
         ConnectPoint nextConnectToCross = null;
@@ -722,8 +733,10 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                         egressPoints.add(hostToDevLocation(dpiConnectPoint));
                         Intent intent = SinglePointToMultiPointIntent.builder()
                                 .appId(appId)
+                                .key(generateKey2(connectsToCross.get(i), connectsToCross.get(i+1)))
                                 .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
                                 .egressPoints(egressPoints)
+                                .selector(selector)
                                 .build();
                         intentService.submit(intent);
                         dpiConnectPoint = null;
@@ -739,8 +752,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 //                .key(generateKey(network, hostIdSrc, hostIdDst))
                                 .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
                                 .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
-//                .constraints(constraints)
-//                .treatment(treatment)
+                                .selector(selector)
                                 .build();
                         intentService.submit(intent);
                     }
@@ -756,8 +768,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 //                .key(generateKey(network, hostIdSrc, hostIdDst))
                                 .ingressPoint(store.getEgressByNFIngress(connectsToCross.get(i)))
                                 .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
-//                .constraints(constraints)
-//                .treatment(treatment)
+                                .selector(selector)
                                 .build();
                         intentService.submit(intent);
                     }
@@ -772,14 +783,12 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 //                .key(generateKey(network, hostIdSrc, hostIdDst))
                                 .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
                                 .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
-//                .constraints(constraints)
-//                .treatment(treatment)
+                                .selector(selector)
                                 .build();
                         intentService.submit(intent);
                     }
 
                 }
-
 
             } else {
                 ConnectPoint actualConnect = connectsToCross.get(i);
@@ -803,10 +812,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                 connectsToCross.add(i+1, nextConnectToCross);
                 changingEdge = false;
                 i--;
-
             }
-
-
         }
     }
 
@@ -942,6 +948,11 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
         }
     }
 
+
+    protected Key generateKey2(ConnectPoint one, ConnectPoint two) {
+        String hosts = one.elementId().toString() + two.elementId().toString();
+        return Key.of(hosts, appId);
+    }
 
 
 

@@ -20,9 +20,7 @@ import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
 import org.apache.karaf.shell.commands.Option;
 import org.onos.byon.NetworkService;
-import org.onosproject.cli.AbstractShellCommand;
 import org.onosproject.cli.net.ConnectivityIntentCommand;
-import org.onosproject.net.HostId;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,8 +28,8 @@ import java.util.List;
 /**
  * CLI to add a host to a network.
  */
-@Command(scope = "byon", name = "add-unibo-intent", description = "Add somo unibo intents to a network")
-public class AddFirstUNIBOIntentCommand extends ConnectivityIntentCommand {
+@Command(scope = "byon", name = "add-steering-unibo-intent", description = "Add somo unibo intents to a network")
+public class AddSteeringUNIBOIntentCommand extends ConnectivityIntentCommand {
 
     @Argument(index = 0, name = "ingress", description = "Network name",
             required = true, multiValued = false)
@@ -91,9 +89,9 @@ public class AddFirstUNIBOIntentCommand extends ConnectivityIntentCommand {
 
 
         if (dpii == null) {
-            networkService.addSecondUNIBOIntent(objectsToCross, dpi, true);
+            networkService.addThirdUNIBOIntent(objectsToCross, dpi, true);
         } else {
-            networkService.addSecondUNIBOIntent(objectsToCross, dpii, true);
+            networkService.addThirdUNIBOIntent(objectsToCross, dpii, true);
         }
 
 
@@ -110,9 +108,9 @@ public class AddFirstUNIBOIntentCommand extends ConnectivityIntentCommand {
             objectsToCrossBack.add(ingress);
 
             if (dpii != null) {
-                networkService.addSecondUNIBOIntent(objectsToCrossBack, dpii, false);
+                networkService.addThirdUNIBOIntent(objectsToCrossBack, dpii, false);
             } else {
-                networkService.addSecondUNIBOIntent(objectsToCrossBack, null, false);
+                networkService.addThirdUNIBOIntent(objectsToCrossBack, null, false);
             }
         }
 

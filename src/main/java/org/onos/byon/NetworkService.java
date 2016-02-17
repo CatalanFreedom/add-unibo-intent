@@ -130,6 +130,6 @@ public interface NetworkService {
      */
     void showNFsBridges();
 
-    public void addThirdUNIBOIntent(List<String> objectsToCross, String dpi);
+    public void addThirdUNIBOIntent(List<String> objectsToCross, String dpi, boolean go);
 
 }
