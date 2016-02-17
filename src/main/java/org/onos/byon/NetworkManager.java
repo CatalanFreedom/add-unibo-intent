@@ -109,6 +109,8 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
     protected ApplicationId appId;
 
+    protected long key = 0;
+
     @Activate
     protected void activate() {
         appId = coreService.registerApplication("org.onos.unibo");
@@ -695,7 +697,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
             dpiConnectPoint = ConnectPoint.hostConnectPoint(dpi + "/0");
         }
 
-
         HostId srcHostId = connectsToCross.get(0).hostId();
         Host srcHost = hostService.getHost(srcHostId);
         Set<IpAddress> ipAdressesSrc = srcHost.ipAddresses();
@@ -733,7 +734,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                         egressPoints.add(hostToDevLocation(dpiConnectPoint));
                         Intent intent = SinglePointToMultiPointIntent.builder()
                                 .appId(appId)
-                                .key(generateKey2(connectsToCross.get(i), connectsToCross.get(i+1)))
+                                .key(genKey(connectsToCross.get(i), connectsToCross.get(i+1)))
                                 .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
                                 .egressPoints(egressPoints)
                                 .selector(selector)
@@ -749,7 +750,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
                         Intent intent = PointToPointIntent.builder()
                                 .appId(appId)
-//                .key(generateKey(network, hostIdSrc, hostIdDst))
+                                .key(genKey(connectsToCross.get(i), connectsToCross.get(i+1)))
                                 .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
                                 .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
                                 .selector(selector)
@@ -765,7 +766,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
                         Intent intent = PointToPointIntent.builder()
                                 .appId(appId)
-//                .key(generateKey(network, hostIdSrc, hostIdDst))
+                                .key(genKey(connectsToCross.get(i), connectsToCross.get(i+1)))
                                 .ingressPoint(store.getEgressByNFIngress(connectsToCross.get(i)))
                                 .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
                                 .selector(selector)
@@ -780,7 +781,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
                         Intent intent = PointToPointIntent.builder()
                                 .appId(appId)
-//                .key(generateKey(network, hostIdSrc, hostIdDst))
+                                .key(genKey(connectsToCross.get(i), connectsToCross.get(i+1)))
                                 .ingressPoint(hostToDevLocation(connectsToCross.get(i)))
                                 .egressPoint(hostToDevLocation(connectsToCross.get(i+1)))
                                 .selector(selector)
@@ -949,9 +950,11 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
     }
 
 
-    protected Key generateKey2(ConnectPoint one, ConnectPoint two) {
-        String hosts = one.elementId().toString() + two.elementId().toString();
-        return Key.of(hosts, appId);
+    protected Key genKey(ConnectPoint one, ConnectPoint two) {
+//        String hosts = one.elementId().toString() + two.elementId().toString();
+//        return Key.of(hosts, appId);
+        key++;
+        return Key.of(key, appId);
     }
 
 
