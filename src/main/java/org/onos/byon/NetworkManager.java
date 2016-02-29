@@ -101,6 +101,8 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
     }
 
 
+
+//    Intent test to use tunnels (treatment: tunnelId)
     public void addIntent() {
 
         ConnectPoint one = ConnectPoint.deviceConnectPoint("of:0000000000000001/1");
@@ -138,6 +140,8 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
 
 
+//    First Unibo intent: Intent to use without loops and making all the intents (without making use
+//      of the fwd bundles of Onos)
     @Override
     public void addFirstUNIBOIntent(List<String> objectsToCross, String dpi){
 
@@ -264,6 +268,10 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
         }
     }
 
+
+
+//    Second Unibo intent: This intent is also used when there is no loop. But in this case we don't install
+//        all the intents because we make use of the fwd bundle of Onos.
     @Override
     public void addSecondUNIBOIntent(List<String> objectsToCross, String dpi, boolean go) {
 
@@ -300,8 +308,9 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                 .matchIPDst(ipDst)
                 .build();
 
-//        We install an intent for each jump in our chain.
-//        Depending in the kind of jump, we will install one kind of intent or another one.
+//       We check each jump of the chain with the for in order to consider if we have to install or
+//        not an intent.
+//        Depending in the kind of jump, we will install one kind of intent, another one or no one.
         for (int i = 0; i < objectsToCross.size() - 1; i++) {
 
 //              Is the present jump between 2 points in the same edge?...
@@ -390,6 +399,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
 
 
+//    Third Unibo intent: Prepared to be used with the tunnels and working with loops in the network
     @Override
     public void addThirdUNIBOIntent(List<String> objectsToCross, String dpi, boolean go){
 
@@ -550,6 +560,9 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
     }
 
 
+
+//    This function recives two ConnectPoints (host or device doesn't mind) and returns
+//    True if they are in the same Edge // False if there are in different Edges
     public boolean areInTheSameEDGE(ConnectPoint one, ConnectPoint two) {
 
         if (one==null || two==null) {
@@ -600,6 +613,8 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
 
 
+//    This function shows the global compisition of the present network. It is like the UI GUI but in text and
+//    including more options like the representation of our GWs, NFs and tunnels.
     public void showUNIBONetwork(){
         Topology myTopo = topologyService.currentTopology();
         Iterator<TopologyCluster> clusters;
@@ -665,6 +680,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
     }
 
 
+//  This function generates a Key for each intent in order to be able to recognise them.
     protected Key genKey(ConnectPoint one, ConnectPoint two) {
 //        String hosts = one.elementId().toString() + two.elementId().toString();
 //        return Key.of(hosts, appId);
@@ -674,6 +690,8 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
 
 
+//    This function is used to configure the ingress and the egress GWs of each Edges. It is launched
+//    with the command "configure-network"
     public void configureNetwork() {
         GWsConfigurer configMyNet = new GWsConfigurer(appId, pathService, hostService, topologyService,
                 clusterService, deviceService, intentService, store);
