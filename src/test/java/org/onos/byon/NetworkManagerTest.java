@@ -61,31 +61,9 @@ public class NetworkManagerTest {
 
     @Test
     public void testHostOrderEquality() {
-        Key key         = manager.generateKey(NETWORK, HOST_1, HOST_2);
-        Key reverse     = manager.generateKey(NETWORK, HOST_2, HOST_1);
-        Key keyDiffHost = manager.generateKey(NETWORK, HOST_1, HOST_3);
-        Key keyDiffNet  = manager.generateKey(NETWORK_2, HOST_1, HOST_2);
-
-        assertEquals(key, reverse);
-        assertNotEquals(key, keyDiffHost);
-        assertNotEquals(key, keyDiffNet);
     }
 
     @Test
     public void testMatches() {
-        Intent intent = HostToHostIntent.builder()
-                .key(manager.generateKey(NETWORK, HOST_1, HOST_2))
-                .appId(manager.appId)
-                .one(HOST_1)
-                .two(HOST_2)
-                .build();
-
-        assertTrue(manager.matches(NETWORK, Optional.of(HOST_1), intent));
-        assertTrue(manager.matches(NETWORK, Optional.of(HOST_2), intent));
-        assertTrue(manager.matches(NETWORK, Optional.empty(), intent));
-
-        assertFalse(manager.matches(NETWORK, Optional.of(HOST_3), intent));
-        assertFalse(manager.matches(NETWORK_2, Optional.of(HOST_1), intent));
-        assertFalse(manager.matches(NETWORK_2, Optional.of(HOST_3), intent));
     }
 }

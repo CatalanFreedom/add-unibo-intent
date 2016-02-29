@@ -1,22 +1,6 @@
-/*
- * Copyright 2015 Open Networking Laboratory
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.onos.byon;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -30,10 +14,7 @@ import org.onosproject.cluster.ClusterService;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.core.CoreService;
 import org.onosproject.event.AbstractListenerManager;
-import org.onosproject.event.EventDeliveryService;
-import org.onosproject.event.ListenerRegistry;
 import org.onosproject.net.*;
-import org.onosproject.net.behaviour.IpTunnelEndPoint;
 import org.onosproject.net.device.DeviceService;
 import org.onosproject.net.flow.DefaultTrafficSelector;
 import org.onosproject.net.flow.DefaultTrafficTreatment;
@@ -41,9 +22,6 @@ import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.host.HostService;
 import org.onosproject.net.intent.*;
-import org.onosproject.net.intent.constraint.AsymmetricPathConstraint;
-import org.onosproject.net.intent.constraint.WaypointConstraint;
-import org.onosproject.net.intent.impl.compiler.HostToHostIntentCompiler;
 import org.onosproject.net.link.LinkService;
 import org.onosproject.net.topology.*;
 import org.slf4j.Logger;
@@ -51,13 +29,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static java.lang.String.format;
 
-/**
- * BYON Application component.
- */
+
 @Component(immediate = true)
 @Service
 public class NetworkManager extends AbstractListenerManager<NetworkEvent, NetworkListener> implements NetworkService {
@@ -73,11 +46,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected CoreService coreService;
 
-    /*
-     * TODO Lab 3: Get a reference to the intent service
-     *
-     * All you need to do is uncomment the following two lines.
-     */
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected IntentService intentService;
 
@@ -100,26 +68,13 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
     protected LinkService linkService;
 
 
-    /*
-     * TODO Lab 6: Instantiate a NetworkStoreDelegate
-     *
-     * You will first need to implement the class (at the bottom of the file).
-     */
     private final NetworkStoreDelegate delegate = new InternalStoreDelegate();
-
     protected ApplicationId appId;
-
     protected long key = 0;
 
     @Activate
     protected void activate() {
         appId = coreService.registerApplication("org.onos.unibo");
-        /*
-         * TODO Lab 6: Remove delegate and event sink
-         *
-         * 1. Add the listener registry to the event dispatcher using eventDispatcher.addSink()
-         * 2. Set the delegate in the store
-         */
         eventDispatcher.addSink(NetworkEvent.class, listenerRegistry);
         store.setDelegate(delegate);
         log.info("Started");
@@ -127,176 +82,9 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
     @Deactivate
     protected void deactivate() {
-        /*
-         * TODO Lab 6: Remove delegate and event sink
-         *
-         * 1. Remove the event class from the event dispatcher using eventDispatcher.removeSink()
-         * 2. Unset the delegate from the store
-         */
         eventDispatcher.removeSink(NetworkEvent.class);
         store.unsetDelegate(delegate);
         log.info("Stopped");
-    }
-
-    @Override
-    public void createNetwork(String network) {
-        checkNotNull(network, "Network name cannot be null");
-        checkState(!network.contains(","), "Network names cannot contain commas");
-        /*
-         * TODO Lab 2: Add the network to the store
-         */
-        store.putNetwork(network);
-    }
-
-    @Override
-    public void deleteNetwork(String network) {
-        checkNotNull(network, "Network name cannot be null");
-        /*
-         * TODO Lab 2: Remove the network from the store
-         */
-        store.removeNetwork(network);
-        /*
-         * TODO Lab 4: Remove the intents when the network is deleted
-         */
-        removeIntents(network, Optional.empty());
-    }
-
-    @Override
-    public Set<String> getNetworks() {
-        /*
-         * TODO Lab 2: Get the networks from the store and return them
-         */
-        return store.getNetworks();
-    }
-
-    @Override
-    public void addHost(String network, HostId hostId) {
-        checkNotNull(network, "Network name cannot be null");
-        checkNotNull(hostId, "HostId cannot be null");
-        /*
-         * TODO Lab 2: Add the host to the network in the store
-         *
-         * TODO Lab 3: Connect the host to the network using intents -- addIntents()
-         *     You only need to add the intents if this is the first time that
-         *     the host is added. (Check the store's return value)
-         */
-        if (store.addHost(network, hostId)) {
-            addIntents(network, hostId, store.getHosts(network));
-        }
-    }
-
-    @Override
-    public void removeHost(String network, HostId hostId) {
-        checkNotNull(network, "Network name cannot be null");
-        checkNotNull(hostId, "HostId cannot be null");
-        /*
-         * TODO Lab 2: Remove the host from the network in the store
-         *
-         * TODO Lab 4: Remove the host's intents from the network
-         */
-        store.removeHost(network, hostId);
-        removeIntents(network, Optional.of(hostId));
-    }
-
-    @Override
-    public Set<HostId> getHosts(String network) {
-        checkNotNull(network, "Network name cannot be null");
-        /*
-         * TODO Lab 2: Retrieve the hosts from the store and return them
-         */
-        return store.getHosts(network);
-    }
-
-    /**
-     * Adds an intent between a new host and all others in the network.
-     *
-     * @param network network name
-     * @param src the new host
-     * @param hostsInNet all hosts in the network
-     */
-    private void addIntents(String network, HostId src, Set<HostId> hostsInNet) {
-        /*
-         * TODO Lab 3: Implement add intents
-         *
-         * 1. Create a HostToHostIntent intent between src and every other host in
-         *    the network using HostToHostIntent.builder()
-         * 2. Generate the intent key using generateKey(), so they can be removed later
-         * 3. Submit the intents using intentService.submit()
-         */
-        hostsInNet.forEach(dst -> {
-            if (!src.equals(dst)) {
-                Intent intent = HostToHostIntent.builder()
-                        .appId(appId)
-                        .key(generateKey(network, src, dst))
-                        .one(src)
-                        .two(dst)
-                        .build();
-                intentService.submit(intent);
-            }
-        });
-    }
-
-    /**
-     * Removes intents that involve the specified host in a network.
-     *
-     * @param network network name
-     * @param hostId host to remove; all hosts if empty
-     */
-    private void removeIntents(String network, Optional<HostId> hostId) {
-        /*
-         * TODO Lab 4: Implement remove intents
-         *
-         * 1. Get the intents from the intent service using intentService.getIntents()
-         * 2. Using matches() to filter intents for this network and hostId
-         * 3. Withdrawn intentService.withdraw()
-         */
-        Iterables.filter(intentService.getIntents(), i -> matches(network, hostId, i))
-                .forEach(intentService::withdraw);
-    }
-
-    /**
-     * Returns ordered intent key from network and two hosts.
-     *
-     * @param network network name
-     * @param one host one
-     * @param two host two
-     * @return canonical intent string key
-     */
-    protected Key generateKey(String network, HostId one, HostId two) {
-        String hosts = one.toString().compareTo(two.toString()) < 0 ?
-                format(HOST_FORMAT, one, two) : format(HOST_FORMAT, two, one);
-        return Key.of(format(KEY_FORMAT, network, hosts), appId);
-    }
-
-    /**
-     * Matches an intent to a network and optional host.
-     *
-     * @param network network name
-     * @param id optional host id, wildcard if missing
-     * @param intent intent to match
-     * @return true if intent matches, false otherwise
-     */
-    protected boolean matches(String network, Optional<HostId> id, Intent intent) {
-        if (!Objects.equals(appId, intent.appId())) {
-            // different app ids
-            return false;
-        }
-
-        String key = intent.key().toString();
-        if (!key.startsWith(network)) {
-            // different network
-            return false;
-        }
-
-        if (!id.isPresent()) {
-            // no host id specified; wildcard match
-            return true;
-        }
-
-        HostId hostId = id.get();
-        String[] fields = key.split(",");
-        // return result of id match in host portion of key
-        return fields.length > 1 && fields[1].contains(hostId.toString());
     }
 
 
@@ -313,116 +101,42 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
     }
 
 
+    public void addIntent() {
 
-    public void addManualIntent(HostId hostIdSrc, String hostToPass, HostId hostIdDst){
-
-//        DeviceId di1 = DeviceId.deviceId(hostToPass);
-////        DeviceId di2 = DeviceId.deviceId("of:0000000000000003");
-//        List<Constraint> constraints = new ArrayList<Constraint>();
-//        constraints.add(new WaypointConstraint(di1));
-//        constraints.add(new AsymmetricPathConstraint());
-//        constraints.add(new WaypointConstraint(di2));
-
-//        Host dstHost = hostService.getHost(hostIdDst);
-//        TrafficTreatment treatment = DefaultTrafficTreatment.builder().setOutput(PortNumber.portNumber(2)).build();
-
-//        ConnectPoint ingressP = ConnectPoint.hostConnectPoint("00:00:00:00:00:01/-1/1");
-//        ConnectPoint egressP = ConnectPoint.deviceConnectPoint("of:0000000000000003/1");
-//        Intent intent2 = PointToPointIntent.builder()
-//                .appId(appId)
-//                .key(generateKey(network, hostIdSrc, hostIdDst))
-//                .ingressPoint(ingressP)
-//                .egressPoint(egressP)
-//                .constraints(constraints)
-////                .treatment(treatment)
-//                .build();
-//        intentService.submit(intent2);
-
-
-
-
-//        Path pathOne = get
-
-//        Intent intent = HostToHostIntent.builder()
-//                .appId(appId)
-//                .key(generateKey(network, hostIdSrc, hostIdDst))
-//                .one(hostIdSrc)
-//                .two(hostIdDst)
-//                .constraints(constraints)
-////                .treatment(treatment)
-//                .build();
-//        intentService.submit(intent);
-
-        ConnectPoint ingressP = ConnectPoint.hostConnectPoint("00:00:00:00:00:01/-1/1");
-        HostId myHostIdOne = ingressP.hostId();
-        IpPrefix myprefix = IpPrefix.valueOf("10.10.10.1/32");
-
-        ConnectPoint egressP = ConnectPoint.hostConnectPoint("00:00:00:00:00:03/-1/1");
-        HostId myHostIdTwo = egressP.hostId();
-
-        TrafficSelector myselector = DefaultTrafficSelector.builder()
-                .matchEthType(Ethernet.TYPE_IPV4)
-                .matchIPSrc(myprefix)
+        ConnectPoint one = ConnectPoint.deviceConnectPoint("of:0000000000000001/1");
+        ConnectPoint two = ConnectPoint.deviceConnectPoint("of:0000000000000004/5");
+        TrafficTreatment treatment = DefaultTrafficTreatment.builder()
+                .setTunnelId(2)
                 .build();
 
-//        Host srHost = hostService.getHost(myhostId);
-
-        Intent intent = HostToHostIntent.builder()
+        Intent intent = PointToPointIntent.builder()
                 .appId(appId)
-                .one(myHostIdOne)
-                .two(myHostIdTwo)
-                .selector(myselector)
+                .ingressPoint(one)
+                .egressPoint(two)
+                //.selector(selector)
+//                .treatment(treatment)
                 .build();
         intentService.submit(intent);
 
 
-        IpTunnelEndPoint tunel = IpTunnelEndPoint.ipTunnelPoint(IpAddress.valueOf("10.10.10.1/32"));
+        one = ConnectPoint.deviceConnectPoint("of:0000000000000009/4");
+        two = ConnectPoint.deviceConnectPoint("of:0000000000000009/2");
+        TrafficSelector selector = DefaultTrafficSelector.builder()
+                .matchTunnelId(2)
+                .build();
 
 
-
-
-        Topology mytopo = topologyService.currentTopology();
-        Set<TopologyCluster> myclusters = topologyService.getClusters(mytopo);
-        Set<DeviceId> deviceIds = topologyService.getClusterDevices(mytopo, myclusters.iterator().next());
-        TopologyGraph mygraph = topologyService.getGraph(mytopo);
-
-        Iterator<Host> it = hostService.getHosts().iterator();
-//        while (it.hasNext()) {
-////            it.next().location().deviceId();
-////            System.out.println(it.next().id().toString());
-//        }
-
-//        System.out.println(hostService.getHost(hostIdSrc).location().port());
-//        System.out.println(hostService.getHost(hostIdDst).location().deviceId());
-
-//        Set<Path> paths = pathService.getPaths(hostIdSrc, hostIdDst, weight(intent.constraints()));
-//        ConnectPoint temporal = ConnectPoint.deviceConnectPoint(hostToPass);
-//        Set<Path> paths = pathService.getPaths(hostIdSrc, temporal.elementId());
-//        System.out.println(paths);
-
-//        System.out.println(mytopo);
-//        System.out.println(myclusters);
-//        System.out.println(deviceIds);
-//        System.out.println(mygraph);
-
-
-        ConfigureNetworks configMyNet = new ConfigureNetworks(appId, pathService, hostService, topologyService, clusterService, deviceService, intentService, store);
-        configMyNet.networkConfigurer();
-
-
-        List<Intent> compilerUNIBOList = new ArrayList<>(3);
-        AddFirstIntentUNIBOCompiler firstUnibo = new AddFirstIntentUNIBOCompiler(appId, pathService, hostService, linkService, deviceService, topologyService, intentService);
-        firstUnibo.compilerUNIBO(hostIdSrc.toString(), hostToPass.toString());
-//        compilerUNIBOList.add(firstUnibo.compilerUNIBO(hostIdSrc.toString(), hostToPass.toString()).get(0));
-//        compilerUNIBOList.add(firstUnibo.compilerUNIBO("of:0000000000000003/1", hostIdDst.toString()).get(0));
-//        Iterator itr = compilerUNIBOList.iterator();
-//        while (itr.hasNext()) {
-//            intentService.submit((Intent)itr.next());
-//        }
-
-
+        Intent intent2 = PointToPointIntent.builder()
+                .appId(appId)
+                .ingressPoint(one)
+                .egressPoint(two)
+//                .selector(selector)
+                .build();
+        intentService.submit(intent2);
 
     }
+
+
 
     @Override
     public void addFirstUNIBOIntent(List<String> objectsToCross, String dpi){
@@ -439,7 +153,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                 connectsToCross.add(ConnectPoint.hostConnectPoint(p + "/0"));
             }
         }
-
 
 //        Checking if we have a DPI to duplicate the packets and send it.
         ConnectPoint dpiConnectPoint = null;
@@ -520,8 +233,6 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                         intentService.submit(intent);
                     }
                 }
-
-
 
 
             } else {
@@ -678,6 +389,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
     }
 
 
+
     @Override
     public void addThirdUNIBOIntent(List<String> objectsToCross, String dpi, boolean go){
 
@@ -697,6 +409,8 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
             dpiConnectPoint = ConnectPoint.hostConnectPoint(dpi + "/0");
         }
 
+
+        // Selectors
         HostId srcHostId = connectsToCross.get(0).hostId();
         Host srcHost = hostService.getHost(srcHostId);
         Set<IpAddress> ipAdressesSrc = srcHost.ipAddresses();
@@ -745,6 +459,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
 
                 } else {        // No DPI or NOT in the present edge
 
+//                    From [Host to NF] or [Host to Tunnel]
                     if (connectsToCross.get(i).elementId() instanceof HostId &&
                             connectsToCross.get(i+1).elementId() instanceof DeviceId) {
 
@@ -774,7 +489,7 @@ public class NetworkManager extends AbstractListenerManager<NetworkEvent, Networ
                         intentService.submit(intent);
                     }
 
- //                    From [Tunnel to NF] or [Tunnel to Tunnel]
+ //                    From [Tunnel to NF]
                     if (connectsToCross.get(i).elementId() instanceof DeviceId &&
                             store.getEgressByNFIngress(connectsToCross.get(i)) == null &&
                             connectsToCross.get(i+1).elementId() instanceof DeviceId ) {

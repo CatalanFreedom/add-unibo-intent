@@ -34,11 +34,11 @@ import java.util.List;
 public class AddFirstUNIBOIntentCommand extends ConnectivityIntentCommand {
 
     @Argument(index = 0, name = "ingress", description = "Network name",
-            required = true, multiValued = false)
+            required = false, multiValued = false)
     String ingress = null;
 
     @Argument(index = 1, name = "pathObject1", description = "Host Id Source",
-            required = true, multiValued = false)
+            required = false, multiValued = false)
     String pathObject1 = null;
 
     @Argument(index = 2, name = "pathObject2", description = "Host Id Destination",
@@ -73,7 +73,7 @@ public class AddFirstUNIBOIntentCommand extends ConnectivityIntentCommand {
     protected void execute() {
         NetworkService networkService = get(NetworkService.class);
 
-        List<String> objectsToCross = new ArrayList<>();
+  /*      List<String> objectsToCross = new ArrayList<>();
         objectsToCross.add(ingress);
         objectsToCross.add(pathObject1);
         if (pathObject2 != null) {
@@ -115,6 +115,10 @@ public class AddFirstUNIBOIntentCommand extends ConnectivityIntentCommand {
                 networkService.addSecondUNIBOIntent(objectsToCrossBack, null, false);
             }
         }
+*/
+
+
+        networkService.addIntent();
 
         print("Added the UNIBO chaining intent");
 //        print("Added intent from %s to %s, with a waypoint in %s. In the network %s", ingressDeviceString, egressDeviceString, RequestPath, ReplyPath);

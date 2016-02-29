@@ -1,23 +1,7 @@
-/*
- * Copyright 2015 Open Networking Laboratory
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 package org.onos.byon;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -39,14 +23,9 @@ import org.onosproject.store.service.MapEvent;
 import org.onosproject.store.service.MapEventListener;
 import org.onosproject.store.service.Serializer;
 import org.onosproject.store.service.StorageService;
-import org.onosproject.store.service.Versioned;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.onos.byon.NetworkEvent.Type.NETWORK_ADDED;
 import static org.onos.byon.NetworkEvent.Type.NETWORK_REMOVED;
@@ -58,17 +37,14 @@ import static org.onos.byon.NetworkEvent.Type.NETWORK_UPDATED;
 @Component(immediate = true)
 @Service
 public class DistributedNetworkStore
-        // TODO Lab 6: Extend the AbstractStore class for the store delegate
+        // Extend the AbstractStore class for the store delegate
         extends AbstractStore<NetworkEvent, NetworkStoreDelegate>
         implements NetworkStore {
 
     private static Logger log = LoggerFactory.getLogger(DistributedNetworkStore.class);
 
-    /*
-     * TODO Lab 5: Get a reference to the storage service
-     *
-     * All you need to do is uncomment the following two lines.
-     */
+//     Get a reference to the storage service
+
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected StorageService storageService;
 
@@ -84,9 +60,7 @@ public class DistributedNetworkStore
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected DeviceService deviceService;
 
-    /*
-     * TODO Lab 5: Replace the ConcurrentMap with ConsistentMap
-     */
+
     private Map<String, Set<HostId>> networks;
 
     private ConsistentMap<String, Set<HostId>> nets;
@@ -105,35 +79,16 @@ public class DistributedNetworkStore
 
 //    private ConnectPoint[][][] matrixTunnels = new ConnectPoint[10][10][2];
 
-    /*
-     * TODO Lab 6: Create a listener instance of InternalListener
-     *
-     * You will first need to implement the class (at the bottom of the file).
-     */
     private final InternalListener listener = new InternalListener();
 
     @Activate
     public void activate() {
-        /**
-         * TODO Lab 5: Replace the ConcurrentHashMap with ConsistentMap
-         *
-         * You should use storageService.consistentMapBuilder(), and the
-         * serializer: Serializer.using(KryoNamespaces.API)
-         */
-
-
-
 
         nets = storageService.<String, Set<HostId>>consistentMapBuilder()
                 .withSerializer(Serializer.using(KryoNamespaces.API))
                 .withName("byon-networks")
                 .build();
 
-        /*
-         * TODO Lab 6: Add the listener to the networks map
-         *
-         * Use nets.addListener()
-         */
         nets.addListener(listener);
         networks = nets.asJavaMap();
         log.info("Started");
@@ -143,11 +98,6 @@ public class DistributedNetworkStore
 
     @Deactivate
     public void deactivate() {
-        /*
-         * TODO Lab 6: Remove the listener from the networks map
-         *
-         * Use nets.removeListener()
-         */
         nets.removeListener(listener);
         log.info("Stopped");
     }
@@ -169,11 +119,6 @@ public class DistributedNetworkStore
 
     @Override
     public boolean addHost(String network, HostId hostId) {
-        /*
-         * TODO Lab 5: Update the Set to Versioned<Set<HostId>>
-         *
-         * You will also need to extract the value in the if statement.
-         */
         Set<HostId> existingHosts = checkNotNull(networks.get(network),
                                                             "Network %s does not exist", network);
         if (existingHosts.contains(hostId)) {
@@ -191,9 +136,6 @@ public class DistributedNetworkStore
 
     @Override
     public void removeHost(String network, HostId hostId) {
-        /*
-         * TODO Lab 5: Update the Set to Versioned<Set<HostId>>
-         */
         Set<HostId> hosts =
                 networks.computeIfPresent(network,
                                           (k, v) -> {
@@ -206,21 +148,10 @@ public class DistributedNetworkStore
 
     @Override
     public Set<HostId> getHosts(String network) {
-        /*
-         * TODO Lab 5: Update return value
-         *
-         * ConsistentMap returns a Versioned<V>, so you need to extract the value
-         */
         return checkNotNull(networks.get(network),
                             "Please create the network first");
     }
 
-    /*
-     * TODO Lab 6: Implement an InternalListener class for remote map events
-     *
-     * The class should implement the MapEventListener interface and
-     * its event method.
-     */
     private class InternalListener implements MapEventListener<String, Set<HostId>> {
         @Override
         public void event(MapEvent<String, Set<HostId>> mapEvent) {
